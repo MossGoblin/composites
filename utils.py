@@ -1,7 +1,11 @@
+from configparser import ConfigParser
+import json
 import math
 from typing import List
 import pyprimes as pp
 import numpy as np
+from bokeh.palettes import Magma, Inferno, Plasma, Viridis, Cividis, Turbo
+import re
 
 
 class Number():
@@ -99,14 +103,86 @@ class ToolBox():
             primes.append(next(prime_generator))
         return primes
 
-class Processor():
 
-    def __init__(self, config_file) -> None:
-        self.tb = ToolBox()
-        if config_file == None:
-            config_file = 'config.ini'
-        pass
+class SettingsParser():
+    def __init__(self, config_file='config.ini') -> None:
+        self.config_file = config_file
+        self.config = ConfigParser()
+        self.settings = self.read_settings(self.config_file)
 
-    def run(self):
-        pass
+    def read_settings(self, config_file='config.ini'):
+        settings = {}
+        if not config_file:
+            config_file = self.config_file
+        self.config.read(self.config_file)
 
+        # Logger settings
+        settings['log_mode'] = self.parse('logger', 'log_mode')
+        settings['log_file_name_string'] = self.parse(
+            'logger', 'log_file_name_string')
+        settings['reset_log_files'] = self.parse('logger', 'reset_log_files')
+
+        # Number set settings
+        settings['number_input_mode'] = self.parse(
+            'numbers', 'number_input_mode')
+        settings['mode'] = self.parse('numbers', 'mode')
+        settings['families'] = self.parse('numbers', 'families')
+        settings['identity_factor_range_min'] = self.parse(
+            'numbers', 'identity_factor_range_min')
+        settings['identity_factor_range_max'] = self.parse(
+            'numbers', 'identity_factor_range_max')
+        settings['identity_factor_mode'] = self.parse(
+            'numbers', 'identity_factor_mode')
+        settings['identity_factor_maximum'] = self.parse(
+            'numbers', 'identity_factor_maximum')
+        settings['identity_factor_minimum_mode'] = self.parse(
+            'numbers', 'identity_factor_minimum_mode')
+        settings['include_primes'] = self.parse('numbers', 'include_primes')
+        settings['range_min'] = self.parse('numbers', 'range_min')
+        settings['range_max'] = self.parse('numbers', 'range_max')
+
+        # Run parameters
+        settings['create_csv'] = self.parse('run', 'create_csv')
+        settings['hard_copy_timestamp_granularity'] = self.parse(
+            'run', 'hard_copy_timestamp_granularity')
+        settings['reset_output_data'] = self.parse('run', 'reset_output_data')
+
+        # graph parameters
+        settings['width'] = self.parse('graph', 'width')
+        settings['height'] = self.parse('graph', 'height')
+        settings['point_size'] = self.parse('graph', 'point_size')
+        settings['mode'] = self.parse('graph', 'mode')
+        settings['use_color_buckets'] = self.parse(
+            'graph', 'use_color_buckets')
+        settings['palette'] = self.parse('graph', 'palette')
+        self.settings = settings
+
+    def parse(self, section: str, parameter: str):
+        # parse the settings according to their type
+        string_value = self.config.get(section, parameter)
+
+        # try float
+        float_string = re.search('^[0-9]+\.[0-9]+$', string_value)
+        if float_string:
+            return float(float_string[0])
+
+        # try int
+        int_string = re.search('^[0-9]+$', string_value)
+        if int_string:
+            return int(int_string[0])
+
+        # try bool
+        bool_string = re.search('^(true|false)$', string_value)
+        if bool_string:
+            return True if bool_string[0] == 'true' else False
+
+        # try int array
+        array_string = re.search('^(\[|\]|\d|,|\s)+$', string_value)
+        if array_string:
+            return json.loads(array_string[0])
+
+        # return string for all other cases
+        return string_value
+
+    def get_settings(self):
+        return self.settings
