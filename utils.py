@@ -102,54 +102,66 @@ class ToolBox():
             primes.append(next(prime_generator))
         return primes
 
+class Options(object):
+    def __init__(self):
+        pass
+
+    def __setattr__(self, key, value):
+        self.__dict__[key] = value
+    
+    def set(self, key, value):
+        self.__dict__[key] = value
 
 class SettingsParser():
     def __init__(self, config_file='config.ini') -> None:
         self.config_file = config_file
         self.config = ConfigParser()
-        self.read_settings(self.config_file)
+        # DBG START
+        self.logger_mode = None
+        self.logger_file_name_string = None
+        self.logger_base_folder = None
+        self.logger_reset_files = None
+        self.logger_format = None
+        self.logger_level = None
+        self.set_mode = None
+        self.set_families = None
+        self.set_identity_factor_mode = None
+        self.set_identity_factor_range_min = None
+        self.set_identity_factor_range_max = None
+        self.set_identity_factor_minimum_mode = None
+        self.set_identity_factor_minimum_value = None
+        self.set_identity_factor_count = None
+        self.set_include_primes = None
+        self.set_range_min = None
+        self.set_range_max = None
+        self.set_csv_file_name = None
+        self.graph_width = None
+        self.graph_height = None
+        self.graph_point_size = None
+        self.graph_mode = None
+        self.graph_use_color_buckets = None
+        self.graph_palette = None
+        self.run_create_csv = None
+        self.run_hard_copy_timestamp_granularity = None
+        self.run_reset_output_data = None
+        # DBG END
+        self._read_settings(self.config_file)
 
-    def read_settings(self, config_file='config.ini'):
+    def _set(self, key, value):
+        self.__dict__[key] = value
+
+    def _read_settings(self, config_file='config.ini'):
         if not config_file:
             config_file = self.config_file
         self.config.read(self.config_file)
+        for section in self.config.sections():
+            section_name = f'{section}_'
+            for option in self.config.options(section):
+                option_name = section_name + option
+                self._set(option_name, self.parse(section, option))
 
-        # Logger settings
-        self.log_mode = self.parse('logger', 'log_mode')
-        self.log_file_name_string = self.parse(
-            'logger', 'log_file_name_string')
-        self.reset_log_files = self.parse('logger', 'reset_log_files')
-        self.logger_format = self.parse('logger', 'logger_format')
-        self.logger_level = self.parse('logger', 'logger_level')
-        self.logging_base_folder = self.parse('logger', 'logging_base_folder')
-
-        # Number set settings
-        self.number_mode = self.parse('numbers', 'mode')
-        self.families = self.parse('numbers', 'families')
-        self.identity_factor_mode = self.parse('numbers', 'identity_factor_mode')
-        self.identity_factor_range_min = self.parse('numbers', 'identity_factor_range_min')
-        self.identity_factor_range_max = self.parse('numbers', 'identity_factor_range_max')
-        self.identity_factor_minimum_mode = self.parse('numbers', 'identity_factor_minimum_mode')
-        self.identity_factor_minimum_value = self.parse('numbers', 'identity_factor_minimum_value')
-        self.identity_factor_minimum_value = self.parse('numbers', 'identity_factor_minimum_value')
-        self.identity_factor_count = self.parse('numbers', 'identity_factor_count')
-        self.include_primes = self.parse('numbers', 'include_primes')
-        self.range_min = self.parse('numbers', 'range_min')
-        self.range_max = self.parse('numbers', 'range_max')
-        self.csv_file_name = self.parse('numbers', 'csv_file_name')
-
-        # Run parameters
-        self.create_csv = self.parse('run', 'create_csv')
-        self.hard_copy_timestamp_granularity = self.parse('run', 'hard_copy_timestamp_granularity')
-        self.reset_output_data = self.parse('run', 'reset_output_data')
-
-        # graph parameters
-        self.width = self.parse('graph', 'width')
-        self.height = self.parse('graph', 'height')
-        self.point_size = self.parse('graph', 'point_size')
-        self.graph_mode = self.parse('graph', 'mode')
-        self.use_color_buckets = self.parse('graph', 'use_color_buckets')
-        self.palette = self.parse('graph', 'palette')
+    def get_settings(self):
+        return self
 
     def parse(self, section: str, parameter: str):
         # parse the settings according to their type
