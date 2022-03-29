@@ -1,6 +1,5 @@
 import logging
 from processor import Processor
-from utils import SettingsParser
 
 # create logger
 logger = logging.getLogger(__name__)
@@ -17,8 +16,8 @@ logger.addHandler(ch)
 
 
 def main():
-    st = SettingsParser('config.ini')
-    st.read_settings()
+    pr = Processor()
+    pr.run()
 
 
 if __name__ == "__main__":

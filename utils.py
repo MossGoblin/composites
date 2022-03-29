@@ -4,7 +4,6 @@ import math
 from typing import List
 import pyprimes as pp
 import numpy as np
-from bokeh.palettes import Magma, Inferno, Plasma, Viridis, Cividis, Turbo
 import re
 
 
@@ -121,6 +120,9 @@ class SettingsParser():
         settings['log_file_name_string'] = self.parse(
             'logger', 'log_file_name_string')
         settings['reset_log_files'] = self.parse('logger', 'reset_log_files')
+        settings['logger_format'] = self.parse('logger', 'logger_format')
+        settings['logger_level'] = self.parse('logger', 'logger_level')
+        settings['logging_base_folder'] = self.parse('logger', 'logging_base_folder')
 
         # Number set settings
         settings['number_input_mode'] = self.parse(
@@ -155,7 +157,8 @@ class SettingsParser():
         settings['use_color_buckets'] = self.parse(
             'graph', 'use_color_buckets')
         settings['palette'] = self.parse('graph', 'palette')
-        self.settings = settings
+        
+        return settings
 
     def parse(self, section: str, parameter: str):
         # parse the settings according to their type
