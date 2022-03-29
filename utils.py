@@ -125,8 +125,6 @@ class SettingsParser():
         settings['logging_base_folder'] = self.parse('logger', 'logging_base_folder')
 
         # Number set settings
-        settings['number_input_mode'] = self.parse(
-            'numbers', 'number_input_mode')
         settings['mode'] = self.parse('numbers', 'mode')
         settings['families'] = self.parse('numbers', 'families')
         settings['identity_factor_range_min'] = self.parse(
@@ -142,6 +140,7 @@ class SettingsParser():
         settings['include_primes'] = self.parse('numbers', 'include_primes')
         settings['range_min'] = self.parse('numbers', 'range_min')
         settings['range_max'] = self.parse('numbers', 'range_max')
+        settings['csv_file_name'] = self.parse('numbers', 'csv_file_name')
 
         # Run parameters
         settings['create_csv'] = self.parse('run', 'create_csv')

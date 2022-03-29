@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 import os
 from utils import SettingsParser, ToolBox
@@ -29,7 +30,7 @@ class Processor():
             handler.setFormatter(formatter)
             # add handler to logger
             logger.addHandler(handler)
-            
+
         if logger_mode == 'file' or logger_mode == 'full':
             # create file handler
             log_file_name = self.settings['log_file_name_string']
@@ -60,7 +61,13 @@ class Processor():
             return
 
     def run(self):
-        self.logger.info('Start')
-        self.logger.debug('Going...')
-        self.logger.info('Done')
-        pass
+        start = datetime.utcnow()
+        self.logger.info(f'Start at {start}')
+        # Log settings
+        self.logger.info(f'Number generation mode: {self.settings["number_input_mode"]}')
+        
+
+
+        end = datetime.utcnow()
+        self.logger.info(f'End at {end}')
+        self.logger.info(f'Total time: {end-start}')
