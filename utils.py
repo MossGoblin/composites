@@ -107,57 +107,49 @@ class SettingsParser():
     def __init__(self, config_file='config.ini') -> None:
         self.config_file = config_file
         self.config = ConfigParser()
-        self.settings = self.read_settings(self.config_file)
+        self.read_settings(self.config_file)
 
     def read_settings(self, config_file='config.ini'):
-        settings = {}
         if not config_file:
             config_file = self.config_file
         self.config.read(self.config_file)
 
         # Logger settings
-        settings['log_mode'] = self.parse('logger', 'log_mode')
-        settings['log_file_name_string'] = self.parse(
+        self.log_mode = self.parse('logger', 'log_mode')
+        self.log_file_name_string = self.parse(
             'logger', 'log_file_name_string')
-        settings['reset_log_files'] = self.parse('logger', 'reset_log_files')
-        settings['logger_format'] = self.parse('logger', 'logger_format')
-        settings['logger_level'] = self.parse('logger', 'logger_level')
-        settings['logging_base_folder'] = self.parse('logger', 'logging_base_folder')
+        self.reset_log_files = self.parse('logger', 'reset_log_files')
+        self.logger_format = self.parse('logger', 'logger_format')
+        self.logger_level = self.parse('logger', 'logger_level')
+        self.logging_base_folder = self.parse('logger', 'logging_base_folder')
 
         # Number set settings
-        settings['mode'] = self.parse('numbers', 'mode')
-        settings['families'] = self.parse('numbers', 'families')
-        settings['identity_factor_range_min'] = self.parse(
-            'numbers', 'identity_factor_range_min')
-        settings['identity_factor_range_max'] = self.parse(
-            'numbers', 'identity_factor_range_max')
-        settings['identity_factor_mode'] = self.parse(
-            'numbers', 'identity_factor_mode')
-        settings['identity_factor_maximum'] = self.parse(
-            'numbers', 'identity_factor_maximum')
-        settings['identity_factor_minimum_mode'] = self.parse(
-            'numbers', 'identity_factor_minimum_mode')
-        settings['include_primes'] = self.parse('numbers', 'include_primes')
-        settings['range_min'] = self.parse('numbers', 'range_min')
-        settings['range_max'] = self.parse('numbers', 'range_max')
-        settings['csv_file_name'] = self.parse('numbers', 'csv_file_name')
+        self.number_mode = self.parse('numbers', 'mode')
+        self.families = self.parse('numbers', 'families')
+        self.identity_factor_mode = self.parse('numbers', 'identity_factor_mode')
+        self.identity_factor_range_min = self.parse('numbers', 'identity_factor_range_min')
+        self.identity_factor_range_max = self.parse('numbers', 'identity_factor_range_max')
+        self.identity_factor_minimum_mode = self.parse('numbers', 'identity_factor_minimum_mode')
+        self.identity_factor_minimum_value = self.parse('numbers', 'identity_factor_minimum_value')
+        self.identity_factor_minimum_value = self.parse('numbers', 'identity_factor_minimum_value')
+        self.identity_factor_count = self.parse('numbers', 'identity_factor_count')
+        self.include_primes = self.parse('numbers', 'include_primes')
+        self.range_min = self.parse('numbers', 'range_min')
+        self.range_max = self.parse('numbers', 'range_max')
+        self.csv_file_name = self.parse('numbers', 'csv_file_name')
 
         # Run parameters
-        settings['create_csv'] = self.parse('run', 'create_csv')
-        settings['hard_copy_timestamp_granularity'] = self.parse(
-            'run', 'hard_copy_timestamp_granularity')
-        settings['reset_output_data'] = self.parse('run', 'reset_output_data')
+        self.create_csv = self.parse('run', 'create_csv')
+        self.hard_copy_timestamp_granularity = self.parse('run', 'hard_copy_timestamp_granularity')
+        self.reset_output_data = self.parse('run', 'reset_output_data')
 
         # graph parameters
-        settings['width'] = self.parse('graph', 'width')
-        settings['height'] = self.parse('graph', 'height')
-        settings['point_size'] = self.parse('graph', 'point_size')
-        settings['mode'] = self.parse('graph', 'mode')
-        settings['use_color_buckets'] = self.parse(
-            'graph', 'use_color_buckets')
-        settings['palette'] = self.parse('graph', 'palette')
-        
-        return settings
+        self.width = self.parse('graph', 'width')
+        self.height = self.parse('graph', 'height')
+        self.point_size = self.parse('graph', 'point_size')
+        self.graph_mode = self.parse('graph', 'mode')
+        self.use_color_buckets = self.parse('graph', 'use_color_buckets')
+        self.palette = self.parse('graph', 'palette')
 
     def parse(self, section: str, parameter: str):
         # parse the settings according to their type
@@ -185,6 +177,3 @@ class SettingsParser():
 
         # return string for all other cases
         return string_value
-
-    def get_settings(self):
-        return self.settings
