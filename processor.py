@@ -83,7 +83,7 @@ class Processor():
 
                 self.logger.debug(f'identity factor minimum: {ifm}')
 
-        elif self.opt.set_mode == 'continuous':
+        elif self.opt.set_mode == 'range':
             self.logger.debug(
                 f'range [{self.opt.set_range_min}..{self.opt.set_range_max}]')
             self.logger.debug(
@@ -116,6 +116,8 @@ class Processor():
         self.logger.info(f'Start at {start}')
         self.log_settings()
         # HERE
+        tb = ToolBox(self.logger, self.opt)
+        numbers = tb.generate_number_list()
         end = datetime.utcnow()
         self.logger.info(f'End at {end}')
         self.logger.info(f'Total time: {end-start}')
