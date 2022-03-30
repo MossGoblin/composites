@@ -140,6 +140,8 @@ class ToolBox():
                 else:
                     first_identity_factor = self.opt.set_identity_factor_minimum_value
                     identity_prime_generator = pp.primes_above(first_identity_factor)
+                    if not pp.isprime(first_identity_factor):
+                        first_identity_factor = next(identity_prime_generator)
                 number_of_families = self.opt.set_identity_factor_count
             else:
                 first_identity_factor = self.opt.set_identity_factor_range_min
@@ -147,7 +149,7 @@ class ToolBox():
                 identity_prime_generator = pp.primes_above(first_identity_factor)
 
             number_list.append(Number(family_product * first_identity_factor))
-            for count in range(number_of_families):
+            for count in range(number_of_families - 1):
                 next_identity_factor = next(identity_prime_generator)
                 number_list.append(Number(family_product * next_identity_factor))
             
