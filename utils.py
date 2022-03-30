@@ -15,55 +15,6 @@ from bokeh import models as models
 
 import labels
 
-class Number():
-
-    def __init__(self, value):
-        self.value = value
-        self.is_prime = pp.isprime(self.value)
-        if self.value == 1:
-            self.ideal_factor = 0
-            self.prime_factors = []
-            self.mean_deviation = 0
-            self.anti_slope = 0
-        else:
-            self.prime_factors = []
-            if self.is_prime:
-                self.prime_factors.append(self.value)
-            else:
-                self.prime_factors = pp.factors(self.value)
-            self.ideal_factor = self.get_ideal_factor(
-                self.value, self.prime_factors)
-            self.mean_deviation = self.get_mean_deviation(
-                self.prime_factors, self.ideal_factor)
-            if self.mean_deviation > 0:
-                self.anti_slope = self.value / self.mean_deviation
-            else:
-                self.anti_slope = 0
-
-    def __str__(self):
-        str = f'value: {self.value} :: '
-        str = str + \
-            f':: factors: [{self.prime_factors[:-1]}] {self.prime_factors[-1]}'
-        str = str + f' > ideal factor: {self.ideal_factor}'
-        str = str + f' > mean deviation: {self.mean_deviation}'
-        str = str + f' > antislope: {self.anti_slope}'
-        return str
-
-    def __repr__(self):
-        repr = f'{self.value} ({self.prime_factors[:-1]} {self.prime_factors[-1]})'
-        return repr
-
-    def get_ideal_factor(self, value: int, prime_factors: List[int]) -> float:
-        return math.pow(value, 1/len(prime_factors))
-
-    def get_mean_deviation(self, prime_factors: List[int], ideal_factor: float) -> float:
-        deviations_sum = 0
-        for prime_factor in prime_factors:
-            deviations_sum += abs(prime_factor - ideal_factor)
-        mean_deviation = deviations_sum / len(prime_factors)
-
-        return mean_deviation
-
 
 class ToolBox():
     def __init__(self, options) -> None:
@@ -114,10 +65,9 @@ class ToolBox():
         if lowerbound < 2:
             lowerbound = 2
         number_list = []
-        for value in range(lowerbound, upperbound + 1):
-            if pp.isprime(value) and not self.opt.set_include_primes:
+        for number in range(lowerbound, upperbound + 1):
+            if pp.isprime(number) and not self.opt.set_include_primes:
                 continue
-            number = Number(value)
             number_list.append(number)
         return number_list
 
@@ -148,10 +98,10 @@ class ToolBox():
                 number_of_families = pp.prime_count(self.opt.set_identity_factor_range_max) - pp.prime_count(self.opt.set_identity_factor_range_min)
                 identity_prime_generator = pp.primes_above(first_identity_factor)
 
-            number_list.append(Number(family_product * first_identity_factor))
+            number_list.append(family_product * first_identity_factor)
             for count in range(number_of_families - 1):
                 next_identity_factor = next(identity_prime_generator)
-                number_list.append(Number(family_product * next_identity_factor))
+                number_list.append(family_product * next_identity_factor)
             
         return number_list
 
@@ -167,6 +117,23 @@ class ToolBox():
         return df
 
     def create_dataframe(self, number_list: List[Number]):
+
+        def get_ideal_factor(number: int, factors) -> float:
+            return math.pow(number, 1/len(factors))
+
+        def get_mean_deviation(prime_factors: List[int], ideal_factor: float) -> float:
+            deviations_sum = 0
+            for prime_factor in prime_factors:
+                deviations_sum += abs(prime_factor - ideal_factor)
+            mean_deviation = deviations_sum / len(prime_factors)
+            return mean_deviation
+
+        def get_antisplope(number, mean_deviation):
+            if mean_deviation > 0:
+                return number / mean_deviation
+            else:
+                return 0
+
         # prep dictionary
         data_dict = {}
         data_dict['number'] = []
@@ -182,23 +149,27 @@ class ToolBox():
 
         # fill in dictionary
         for number in number_list:
-            data_dict['number'].append(number.value)
+            data_dict['number'].append(number)
             if self.opt.set_include_primes:
                 data_dict['is_prime'].append(
-                    'true' if number.is_prime else 'false')
+                    'true' if pp.isprime(number) else 'false')
+            factors = pp.factors(number)
             data_dict['prime_factors'].append(
-                self.int_list_to_str(number.prime_factors))
-            data_dict['ideal'].append(number.ideal_factor)
-            data_dict['deviation'].append(number.mean_deviation)
-            data_dict['anti_slope'].append(number.anti_slope)
-            if number.value == 1:
+                self.int_list_to_str(factors))
+            ideal_factor = get_ideal_factor(number, factors)
+            data_dict['ideal'].append(ideal_factor)
+            mean_deviation = get_mean_deviation(factors, ideal_factor)
+            data_dict['deviation'].append(mean_deviation)
+            anti_slope = get_antisplope(number, mean_deviation)
+            data_dict['anti_slope'].append(anti_slope)
+            if number == 1:
                 data_dict['family_factors'].append(0)
                 data_dict['identity_factor'].append(0)
-                data_dict['factor_family'].append(1)
+                data_dict['family_product'].append(1)
             else:
-                data_dict['family_factors'].append(number.prime_factors[:-1])
-                data_dict['identity_factor'].append(number.prime_factors[-1])
-                data_dict['family_product'].append(int(np.prod(number.prime_factors[:-1])))
+                data_dict['family_factors'].append(factors[:-1])
+                data_dict['identity_factor'].append(factors[-1])
+                data_dict['family_product'].append(int(np.prod(factors[:-1])))
 
         df = pd.DataFrame(data_dict)
         df.reset_index()
