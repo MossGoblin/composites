@@ -71,30 +71,29 @@ class ToolBox():
             number_list = self.generate_number_families()
         elif self.opt.set_mode == 'range':
             self.logger.debug('Processing range')
+            number_list = self.generate_continuous_number_list()
         else:
-            self.logger.debug('Processing file')
-        print('NYI')
+            self.logger.debug('Processing file - NOT IMPLEMENTED YET')
+        self.logger.debug(f'Numbers generated ({len(number_list)})')
 
 
-    def generate_continuous_number_list(self, lowerbound: int, upperbound: int, include_primes: bool):
-        lowerbound = lowerbound
-        upperbound = upperbound
+    def generate_continuous_number_list(self):
+        lowerbound = self.opt.set_range_min
+        upperbound = self.opt.set_range_max
         if lowerbound < 2:
             lowerbound = 2
         number_list = []
         for value in range(lowerbound, upperbound + 1):
-            if pp.isprime(value) and not include_primes:
+            if pp.isprime(value) and not self.opt.set_include_primes:
                 continue
-            number = Number(value=value)
+            number = Number(value)
             number_list.append(number)
         return number_list
 
     def generate_number_families(self):
-        processed_numbers = []
+        number_list = []
         for family in self.opt.set_families:
             family_product = int(np.prod(family))
-            identity_factors = []
-            # HERE
             if self.opt.set_identity_factor_mode == 'count':
                 if self.opt.set_identity_factor_minimum_mode == 'family':
                     largest_family_factor = family[-1]
@@ -107,21 +106,17 @@ class ToolBox():
                     first_identity_factor = self.opt.set_identity_factor_minimum_value
                     identity_prime_generator = pp.primes_above(first_identity_factor)
                 number_of_families = self.opt.set_identity_factor_count
-                # processed_numbers.append(family_product * first_identity_factor)
-                # for count in range(number_of_families):
-                #     next_identity_factor = next(identity_prime_generator)
-                #     processed_numbers.append(family_product * next_identity_factor)
             else:
                 first_identity_factor = self.opt.set_identity_factor_range_min
                 number_of_families = pp.prime_count(self.opt.set_identity_factor_range_max) - pp.prime_count(self.opt.set_identity_factor_range_min)
                 identity_prime_generator = pp.primes_above(first_identity_factor)
 
-            processed_numbers.append(Number(family_product * first_identity_factor))
+            number_list.append(Number(family_product * first_identity_factor))
             for count in range(number_of_families):
                 next_identity_factor = next(identity_prime_generator)
-                processed_numbers.append(Number(family_product * next_identity_factor))
+                number_list.append(Number(family_product * next_identity_factor))
             
-        return processed_numbers
+        return number_list
 
 
     def get_primes_between(self, previous: int, total_count: int):
