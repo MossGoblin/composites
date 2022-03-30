@@ -113,10 +113,9 @@ class ToolBox():
         except Exception as e:
             self.logger.error(f'Could not read csv input file: {e}')
             raise e
-        pass
         return df
 
-    def create_dataframe(self, number_list: List[Number]):
+    def create_dataframe(self, number_list: List[int]):
 
         def get_ideal_factor(number: int, factors) -> float:
             return math.pow(number, 1/len(factors))
@@ -134,6 +133,9 @@ class ToolBox():
             else:
                 return 0
 
+        def get_antislope_attractor(factors):
+            return int(np.prod(factors[:-1])) * len(factors)
+
         # prep dictionary
         data_dict = {}
         data_dict['number'] = []
@@ -146,6 +148,7 @@ class ToolBox():
         data_dict['family_factors'] = []
         data_dict['identity_factor'] = []
         data_dict['family_product'] = []
+        data_dict['attractor'] = []
 
         # fill in dictionary
         for number in number_list:
@@ -162,6 +165,8 @@ class ToolBox():
             data_dict['deviation'].append(mean_deviation)
             anti_slope = get_antisplope(number, mean_deviation)
             data_dict['anti_slope'].append(anti_slope)
+            anti_slope_attractor = get_antislope_attractor(factors)
+            data_dict['attractor'].append(anti_slope_attractor)
             if number == 1:
                 data_dict['family_factors'].append(0)
                 data_dict['identity_factor'].append(0)
@@ -202,6 +207,7 @@ class ToolBox():
                         ('ideal factor value', '@ideal'),
                         ('mean factor deviation', '@deviation'),
                         ('anti-slope', '@anti_slope'),
+                        ('attractor', '@attractor'),
                         ('family factors', '@family_factors'),
                         ('identity factor', '@identity_factor'),
                         ('family product', '@family_product'),

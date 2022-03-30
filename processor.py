@@ -55,8 +55,7 @@ class Processor():
         self.logger.info(f'number generation mode: {self.opt.set_mode}')
         if self.opt.set_mode == 'family':
             self.logger.debug(f'families: {self.opt.set_families}')
-            self.logger.debug(
-                f'identity factor mode: {self.opt.set_identity_factor_mode}')
+            self.logger.debug(f'identity factor mode: {self.opt.set_identity_factor_mode}')
             if self.opt.set_identity_factor_mode == 'range':
                 self.logger.debug(
                     f'identity factor range: {self.opt.set_identity_factor_range_min}..{self.opt.set_identity_factor_range_max}')
@@ -67,6 +66,7 @@ class Processor():
                     ifm = self.opt.set_identity_factor_minimum_mode
 
                 self.logger.debug(f'identity factor minimum: {ifm}')
+                self.logger.debug(f'number of identity factors: {self.opt.set_identity_factor_count}')
 
         elif self.opt.set_mode == 'range':
             self.logger.debug(
