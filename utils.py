@@ -1,12 +1,19 @@
 from configparser import ConfigParser
+from datetime import datetime
 import json
 import math
-from typing import List
+import os
+from typing import Dict, List
 import pyprimes as pp
 import numpy as np
 import re
 import pandas as pd
 
+from bokeh.models import ColumnDataSource, CategoricalColorMapper
+from bokeh.plotting import figure, show
+from bokeh import models as models
+
+import labels
 
 class Number():
 
@@ -59,9 +66,27 @@ class Number():
 
 
 class ToolBox():
-    def __init__(self, logger, options) -> None:
-        self.logger = logger
+    def __init__(self, options) -> None:
         self.opt = options
+
+    def set_logger(self, logger):
+        self.logger = logger
+
+    def prep_folder(self, folder_name: str, reset_folder: bool):
+        '''
+        Prepare folder for output csv files
+        '''
+
+        if not os.path.exists(folder_name):
+            os.mkdir(folder_name)
+            return
+        else:
+            if reset_folder:
+                for root, directories, files in os.walk(folder_name):
+                    for file in files:
+                        file_path = root + '/' + file
+                        os.remove(file_path)
+            return
 
 
     def generate_number_list(self):
@@ -151,7 +176,7 @@ class ToolBox():
         data_dict['anti_slope'] = []
         data_dict['family_factors'] = []
         data_dict['identity_factor'] = []
-        data_dict['family'] = []
+        data_dict['family_product'] = []
 
         # fill in dictionary
         for number in number_list:
@@ -171,7 +196,7 @@ class ToolBox():
             else:
                 data_dict['family_factors'].append(number.prime_factors[:-1])
                 data_dict['identity_factor'].append(number.prime_factors[-1])
-                data_dict['family'].append(int(np.prod(number.prime_factors[:-1])))
+                data_dict['family_product'].append(int(np.prod(number.prime_factors[:-1])))
 
         df = pd.DataFrame(data_dict)
         df.reset_index()
@@ -180,8 +205,105 @@ class ToolBox():
         return df
 
 
-    def create_graph(self, df):
-        print('NYI')
+    def plot_data(self, df):
+        data = ColumnDataSource(data=df)
+
+        # [x] create plot
+        plot_width = self.opt.graph_width
+        plot_height = self.opt.graph_height
+        primes_included_text = " Primes included" if self.opt.set_include_primes else " Primes excluded"
+
+        graph_params = {}
+        graph_params['title'] = 'LOREM IPSUM'
+        graph_params['y_axis_label'] = labels.y_axis_label[self.opt.graph_mode]
+        graph_params['width'] = plot_width
+        graph_params['height'] = plot_height
+
+        graph = self.get_figure(graph_params)
+
+        # [x] add hover tool
+        tooltips = [('number', '@number')]
+        if self.opt.set_include_primes:
+            tooltips.append(('prime', '@is_prime'))
+        tooltips.extend([('factors', '@prime_factors'),
+                        ('ideal factor value', '@ideal'),
+                        ('mean factor deviation', '@deviation'),
+                        ('anti-slope', '@anti_slope'),
+                        ('family factors', '@family_factors'),
+                        ('identity factor', '@identity_factor'),
+                        ('family product', '@family_product'),
+                         ])
+
+        hover = models.HoverTool(tooltips=tooltips)
+        graph.add_tools(hover)
+
+        # [x] add graph
+        graph_point_size = int(self.opt.graph_point_size)
+
+        graph_params['type'] = 'scatter'
+        graph_params['y_value'] = labels.y_axis_values[self.opt.graph_mode]
+        graph_params['graph_point_size'] = graph_point_size
+        graph_params['palette'] = self.opt.graph_palette
+
+        graph, coloring = self.create_graph(graph, data, graph_params)
+
+        # [x] 'hard copy'
+        graph_mode_chunk = labels.graph_mode_filename_chunk[self.opt.graph_mode]
+        timestamp_format = self.generate_timestamp()
+        timestamp = datetime.utcnow().strftime(timestamp_format)
+        primes_included = 'primes' if self.opt.set_include_primes else 'no_primes'
+        # hard_copy_filename = str(self.cfg.lowerbound) + '_' + str(self.cfg.upperbound) + \
+        #     '_' + graph_mode_chunk + '_' + primes_included + '_' + coloring + '_' + timestamp
+        hard_copy_filename = 'PLACEHOLDER_NAME'
+        csv_output_folder = 'output'
+        if self.opt.run_create_csv:
+            full_hard_copy_filename = hard_copy_filename + '.csv'
+            path = csv_output_folder + '\\'
+            self.prep_folder(csv_output_folder, self.opt.run_reset_output_data)
+            df.to_csv(path + full_hard_copy_filename)
+            self.logger.info(f'Data saved as output\{full_hard_copy_filename}')
+
+        # [x] show
+        self.logger.info('Graph generated')
+        show(graph)
+
+        self.stash_graph_html(csv_output_folder, hard_copy_filename)
+
+    def generate_timestamp(self):
+        '''
+        Generate timestamp string, depending on the desired granularity, set in the config file
+        '''
+
+        timestamp_format = ''
+        timestamp_granularity = self.opt.run_hard_copy_timestamp_granularity
+        format_chunks = ['%d%m%Y', '_%H', '%M', '%S']
+        for chunk_index in range(timestamp_granularity + 1):
+            timestamp_format += format_chunks[chunk_index]
+        return timestamp_format
+
+    def stash_graph_html(self, csv_output_folder, graph_filename: str):
+        full_stashed_filename = csv_output_folder + '\\' + graph_filename + '.html'
+        with open('main.html', 'r') as html_output_file:
+            content = html_output_file.read()
+            with open(full_stashed_filename, 'wt') as stashed_html_output_file:
+                stashed_html_output_file.write(content)
+        self.logger.info(f'Graph saved as {full_stashed_filename}')
+
+    def create_graph(self, graph: figure, data: ColumnDataSource, graph_params: Dict) -> figure:
+        '''
+        Creates a scatter plot by given parameters
+        '''
+
+        coloring = ''
+        y_value = graph_params['y_value']
+        graph_point_size = graph_params['graph_point_size']
+        palette = graph_params['palette']
+
+        base_color = '#3030ff'
+        graph.scatter(source=data, x='number', y=y_value, color=base_color, size=graph_point_size)
+        coloring = 'monocolor'
+
+        return graph, coloring
 
 
     def get_primes_between(self, previous: int, total_count: int):
@@ -204,6 +326,17 @@ class ToolBox():
             return bookends[0] + list_string + bookends[1]
         else:
             return list_string
+
+    def get_figure(self, params: Dict) -> figure:
+        '''
+        Returns a figure with the provided parameters
+        '''
+        title = params['title']
+        y_axis_label = params['y_axis_label']
+        width = params['width']
+        height = params['height']
+
+        return figure(title=title, x_axis_label='number', y_axis_label=y_axis_label, width=width, height=height)
 
 class Options(object):
     def __init__(self):

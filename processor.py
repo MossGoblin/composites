@@ -1,6 +1,5 @@
 from datetime import datetime
 import logging
-import os
 from utils import SettingsParser, ToolBox
 
 
@@ -8,7 +7,9 @@ class Processor():
 
     def __init__(self, config_file='config.ini') -> None:
         self.opt = SettingsParser(config_file=config_file).get_settings()
+        self.tb = ToolBox(self.opt)
         self.logger = self.set_up_logger()
+        self.tb.set_logger(self.logger)
 
     def set_up_logger(self):
         # create logger
@@ -20,7 +21,7 @@ class Processor():
 
         reset_log_folder = self.opt.logger_reset_files
         log_folder = self.opt.logger_base_folder
-        self.prep_folder(log_folder, reset_log_folder)
+        self.tb.prep_folder(log_folder, reset_log_folder)
 
         logger_mode = self.opt.logger_mode
         if logger_mode == 'console' or logger_mode == 'full':
@@ -44,22 +45,6 @@ class Processor():
             logger.addHandler(handler)
 
         return logger
-
-    def prep_folder(self, folder_name: str, reset_folder: bool):
-        '''
-        Prepare folder for output csv files
-        '''
-
-        if not os.path.exists(folder_name):
-            os.mkdir(folder_name)
-            return
-        else:
-            if reset_folder:
-                for root, directories, files in os.walk(folder_name):
-                    for file in files:
-                        file_path = root + '/' + file
-                        os.remove(file_path)
-            return
 
     def log_settings(self):
         '''
@@ -115,13 +100,12 @@ class Processor():
         start = datetime.utcnow()
         self.logger.info(f'Start at {start}')
         self.log_settings()
-        tb = ToolBox(self.logger, self.opt)
         if self.opt.set_mode == 'file':
-            df = tb.read_data_from_file()
+            df = self.tb.read_data_from_file()
         else:
-            numbers = tb.generate_number_list()
-            df = tb.create_dataframe(numbers)
-            tb.create_graph(df)
+            numbers = self.tb.generate_number_list()
+            df = self.tb.create_dataframe(numbers)
+            self.tb.plot_data(df)
         end = datetime.utcnow()
         self.logger.info(f'End at {end}')
         self.logger.info(f'Total time: {end-start}')
