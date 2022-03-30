@@ -5,6 +5,7 @@ from typing import List
 import pyprimes as pp
 import numpy as np
 import re
+import pandas as pd
 
 
 class Number():
@@ -76,8 +77,13 @@ class ToolBox():
             self.logger.debug('Processing file - NOT IMPLEMENTED YET')
         self.logger.debug(f'Numbers generated ({len(number_list)})')
 
+        return number_list
+
 
     def generate_continuous_number_list(self):
+        '''
+        Generate a number of Number objects with values in a range, specified in config
+        '''
         lowerbound = self.opt.set_range_min
         upperbound = self.opt.set_range_max
         if lowerbound < 2:
@@ -91,6 +97,10 @@ class ToolBox():
         return number_list
 
     def generate_number_families(self):
+        '''
+        Generate a list of Number objects
+        from the family definitions specified in config
+        '''
         number_list = []
         for family in self.opt.set_families:
             family_product = int(np.prod(family))
@@ -118,6 +128,61 @@ class ToolBox():
             
         return number_list
 
+    def read_data_from_file(self):
+        file_name = self.opt.set_csv_file_name
+        try:
+            with open(file_name, mode='w') as file:
+                df = pd.read_csv(file)
+        except Exception as e:
+            self.logger.error(f'Could not read csv input file: {e}')
+            raise e
+        pass
+        return df
+
+    def create_dataframe(self, number_list: List[Number]):
+        # prep dictionary
+        data_dict = {}
+        data_dict['number'] = []
+        if self.opt.set_include_primes:
+            data_dict['is_prime'] = []
+        data_dict['prime_factors'] = []
+        data_dict['ideal'] = []
+        data_dict['deviation'] = []
+        data_dict['anti_slope'] = []
+        data_dict['family_factors'] = []
+        data_dict['identity_factor'] = []
+        data_dict['family'] = []
+
+        # fill in dictionary
+        for number in number_list:
+            data_dict['number'].append(number.value)
+            if self.opt.set_include_primes:
+                data_dict['is_prime'].append(
+                    'true' if number.is_prime else 'false')
+            data_dict['prime_factors'].append(
+                self.int_list_to_str(number.prime_factors))
+            data_dict['ideal'].append(number.ideal_factor)
+            data_dict['deviation'].append(number.mean_deviation)
+            data_dict['anti_slope'].append(number.anti_slope)
+            if number.value == 1:
+                data_dict['family_factors'].append(0)
+                data_dict['identity_factor'].append(0)
+                data_dict['factor_family'].append(1)
+            else:
+                data_dict['family_factors'].append(number.prime_factors[:-1])
+                data_dict['identity_factor'].append(number.prime_factors[-1])
+                data_dict['family'].append(int(np.prod(number.prime_factors[:-1])))
+
+        df = pd.DataFrame(data_dict)
+        df.reset_index()
+        self.logger.debug(f'Data collated')
+
+        return df
+
+
+    def create_graph(self, df):
+        print('NYI')
+
 
     def get_primes_between(self, previous: int, total_count: int):
         primes = []
@@ -125,6 +190,20 @@ class ToolBox():
         for count in range(total_count):
             primes.append(next(prime_generator))
         return primes
+
+    def int_list_to_str(self, number_list: List[int], separator=', ', use_bookends=True, bookends=['[ ', ' ]']):
+        '''
+        Generate a string from a list of integers
+        '''
+
+        stringified_list = []
+        for number in number_list:
+            stringified_list.append(str(number))
+        list_string = separator.join(stringified_list)
+        if use_bookends:
+            return bookends[0] + list_string + bookends[1]
+        else:
+            return list_string
 
 class Options(object):
     def __init__(self):

@@ -115,9 +115,13 @@ class Processor():
         start = datetime.utcnow()
         self.logger.info(f'Start at {start}')
         self.log_settings()
-        # HERE
         tb = ToolBox(self.logger, self.opt)
-        numbers = tb.generate_number_list()
+        if self.opt.set_mode == 'file':
+            df = tb.read_data_from_file()
+        else:
+            numbers = tb.generate_number_list()
+            df = tb.create_dataframe(numbers)
+            tb.create_graph(df)
         end = datetime.utcnow()
         self.logger.info(f'End at {end}')
         self.logger.info(f'Total time: {end-start}')
