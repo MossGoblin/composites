@@ -170,8 +170,11 @@ class ToolBox():
         data_dict['family_factors'] = []
         data_dict['identity_factor'] = []
         data_dict['family_product'] = []
+        data_dict['family'] = []
         data_dict['attractor'] = []
-
+        if self.opt.graph_use_color_buckets:
+            data_dict['color_bucket'] = []
+        
         self.attractors = []
         # fill in dictionary
         for number in number_list:
@@ -223,6 +226,11 @@ class ToolBox():
         self.logger.debug(f'Data collated')
 
         return df
+
+    def get_bucket_index(self, family):
+        for index, buckets in self.color_buckets.items():
+            if family in buckets:
+                return str(index)
 
     def plot_data(self, dataframe):
         data = ColumnDataSource(data=dataframe)
