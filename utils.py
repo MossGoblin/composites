@@ -12,6 +12,7 @@ import pandas as pd
 from bokeh.models import ColumnDataSource, CategoricalColorMapper
 from bokeh.plotting import figure, show
 from bokeh import models as models
+from bokeh.palettes import Magma, Inferno, Plasma, Viridis, Cividis, Turbo
 
 import labels
 
@@ -22,6 +23,25 @@ class ToolBox():
 
     def set_logger(self, logger):
         self.logger = logger
+
+    def get_color_base(self, number_of_groups):
+        if number_of_groups <= 11:
+            return 1
+        previous_base = int(np.floor(number_of_groups**(1/11)))
+        return previous_base + 1
+
+    def get_family_buckets(self, families, color_base):
+        color_buckets = {}
+        power = 0
+        while len(families) >= 1:
+            next_cut_off = color_base**power
+            bucket_index = power + 1
+            if not bucket_index in color_buckets.keys():
+                color_buckets[bucket_index] = []
+            color_buckets[bucket_index].extend(families[:next_cut_off])
+            families = families[next_cut_off:]
+            power = power + 1
+        return color_buckets
 
     def prep_folder(self, folder_name: str, reset_folder: bool):
         '''
@@ -39,7 +59,6 @@ class ToolBox():
                         os.remove(file_path)
             return
 
-
     def generate_number_list(self):
         self.logger.info('Generating numbers')
         number_list = []
@@ -54,7 +73,6 @@ class ToolBox():
         self.logger.debug(f'Numbers generated ({len(number_list)})')
 
         return number_list
-
 
     def generate_continuous_number_list(self):
         '''
@@ -82,11 +100,13 @@ class ToolBox():
             if self.opt.set_identity_factor_mode == 'count':
                 if self.opt.set_identity_factor_minimum_mode == 'family':
                     largest_family_factor = family[-1]
-                    identity_prime_generator = pp.primes_above(largest_family_factor)
+                    identity_prime_generator = pp.primes_above(
+                        largest_family_factor)
                     first_identity_factor = next(identity_prime_generator)
                 elif self.opt.set_identity_factor_minimum_mode == 'origin':
                     first_identity_factor = 2
-                    identity_prime_generator = pp.primes_above(first_identity_factor)
+                    identity_prime_generator = pp.primes_above(
+                        first_identity_factor)
                 else:
                     first_identity_factor = self.opt.set_identity_factor_minimum_value
                     identity_prime_generator = pp.primes_above(first_identity_factor)
@@ -95,8 +115,10 @@ class ToolBox():
                 number_of_families = self.opt.set_identity_factor_count
             else:
                 first_identity_factor = self.opt.set_identity_factor_range_min
-                number_of_families = pp.prime_count(self.opt.set_identity_factor_range_max) - pp.prime_count(self.opt.set_identity_factor_range_min)
-                identity_prime_generator = pp.primes_above(first_identity_factor)
+                number_of_families = pp.prime_count(
+                    self.opt.set_identity_factor_range_max) - pp.prime_count(self.opt.set_identity_factor_range_min)
+                identity_prime_generator = pp.primes_above(
+                    first_identity_factor)
 
             number_list.append(family_product * first_identity_factor)
             for count in range(number_of_families - 1):
@@ -150,6 +172,7 @@ class ToolBox():
         data_dict['family_product'] = []
         data_dict['attractor'] = []
 
+        self.attractors = []
         # fill in dictionary
         for number in number_list:
             data_dict['number'].append(number)
@@ -171,10 +194,29 @@ class ToolBox():
                 data_dict['family_factors'].append(0)
                 data_dict['identity_factor'].append(0)
                 data_dict['family_product'].append(1)
+                data_dict['family'].append(1)
+                self.attractors.append(1)
             else:
                 data_dict['family_factors'].append(factors[:-1])
                 data_dict['identity_factor'].append(factors[-1])
                 data_dict['family_product'].append(int(np.prod(factors[:-1])))
+                data_dict['family'].append(int(np.prod(factors[:-1])))
+                self.attractors.append((int(np.prod(factors[:-1]))*len(factors)))
+
+        # prep colorization
+        if self.opt.graph_use_color_buckets:
+            self.attractors = np.array(self.attractors)
+            self.attractors = np.unique(self.attractors)
+            self.attractors = self.attractors.tolist()
+            # find color base
+            color_base = self.get_color_base(len(self.attractors))
+            self.color_buckets = self.get_family_buckets(self.attractors, color_base)
+            for number in number_list:
+                family = 1
+                if number > 1:
+                    family = (int(np.prod(pp.factors(number)[:-1])))*len(pp.factors(number))
+                color_bucket_index = self.get_bucket_index(family)
+                data_dict['color_bucket'].append(color_bucket_index)
 
         df = pd.DataFrame(data_dict)
         df.reset_index()
@@ -182,9 +224,8 @@ class ToolBox():
 
         return df
 
-
-    def plot_data(self, df):
-        data = ColumnDataSource(data=df)
+    def plot_data(self, dataframe):
+        data = ColumnDataSource(data=dataframe)
 
         # [x] create plot
         plot_width = self.opt.graph_width
@@ -211,6 +252,7 @@ class ToolBox():
                         ('family factors', '@family_factors'),
                         ('identity factor', '@identity_factor'),
                         ('family product', '@family_product'),
+                        ('family', '@family'),
                          ])
 
         hover = models.HoverTool(tooltips=tooltips)
@@ -219,12 +261,11 @@ class ToolBox():
         # [x] add graph
         graph_point_size = int(self.opt.graph_point_size)
 
-        graph_params['type'] = 'scatter'
+        # graph_params['type'] = 'scatter' # DBG Always use scatter
         graph_params['y_value'] = labels.y_axis_values[self.opt.graph_mode]
         graph_params['graph_point_size'] = graph_point_size
-        graph_params['palette'] = self.opt.graph_palette
 
-        graph, coloring = self.create_graph(graph, data, graph_params)
+        graph = self.create_graph(graph, data, graph_params)
 
         # [x] 'hard copy'
         graph_mode_chunk = labels.graph_mode_filename_chunk[self.opt.graph_mode]
@@ -234,19 +275,19 @@ class ToolBox():
         # hard_copy_filename = str(self.cfg.lowerbound) + '_' + str(self.cfg.upperbound) + \
         #     '_' + graph_mode_chunk + '_' + primes_included + '_' + coloring + '_' + timestamp
         hard_copy_filename = 'PLACEHOLDER_NAME'
-        csv_output_folder = 'output'
+        output_folder = 'output'
         if self.opt.run_create_csv:
             full_hard_copy_filename = hard_copy_filename + '.csv'
-            path = csv_output_folder + '\\'
-            self.prep_folder(csv_output_folder, self.opt.run_reset_output_data)
-            df.to_csv(path + full_hard_copy_filename)
+            path = output_folder + '\\'
+            self.prep_folder(output_folder, self.opt.run_reset_output_data)
+            dataframe.to_csv(path + full_hard_copy_filename)
             self.logger.info(f'Data saved as output\{full_hard_copy_filename}')
 
         # [x] show
         self.logger.info('Graph generated')
         show(graph)
 
-        self.stash_graph_html(csv_output_folder, hard_copy_filename)
+        self.stash_graph_html(output_folder, hard_copy_filename)
 
     def generate_timestamp(self):
         '''
@@ -273,17 +314,21 @@ class ToolBox():
         Creates a scatter plot by given parameters
         '''
 
-        coloring = ''
         y_value = graph_params['y_value']
         graph_point_size = graph_params['graph_point_size']
-        palette = graph_params['palette']
 
-        base_color = '#3030ff'
-        graph.scatter(source=data, x='number', y=y_value, color=base_color, size=graph_point_size)
-        coloring = 'monocolor'
 
-        return graph, coloring
+        if self.opt.graph_use_color_buckets:
+            color_factors_list = list(map(str, list(self.color_buckets.keys())))
+            palette_colors = Turbo[len(color_factors_list)]
+            color_mapper = CategoricalColorMapper(factors=color_factors_list, palette=palette_colors)
+            graph.scatter(source=data, x='number', y=y_value, color={'field': 'color_bucket', 'transform': color_mapper}, size=graph_point_size)
+        else:
+            base_color = '#3030ff'
+            graph.scatter(source=data, x='number', y=y_value,
+                          color=base_color, size=graph_point_size)
 
+        return graph
 
     def get_primes_between(self, previous: int, total_count: int):
         primes = []
@@ -317,15 +362,17 @@ class ToolBox():
 
         return figure(title=title, x_axis_label='number', y_axis_label=y_axis_label, width=width, height=height)
 
+
 class Options(object):
     def __init__(self):
         pass
 
     def __setattr__(self, key, value):
         self.__dict__[key] = value
-    
+
     def set(self, key, value):
         self.__dict__[key] = value
+
 
 class SettingsParser():
     def __init__(self, config_file='config.ini') -> None:
@@ -355,7 +402,6 @@ class SettingsParser():
         self.graph_point_size = None
         self.graph_mode = None
         self.graph_use_color_buckets = None
-        self.graph_palette = None
         self.run_create_csv = None
         self.run_hard_copy_timestamp_granularity = None
         self.run_reset_output_data = None
