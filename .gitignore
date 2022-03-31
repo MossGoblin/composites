@@ -154,3 +154,5 @@ cython_debug/
 
 # locals
 logging/
+output/
+main.html
