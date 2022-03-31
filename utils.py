@@ -12,57 +12,9 @@ import pandas as pd
 from bokeh.models import ColumnDataSource, CategoricalColorMapper
 from bokeh.plotting import figure, show
 from bokeh import models as models
+from bokeh.palettes import Magma, Inferno, Plasma, Viridis, Cividis, Turbo
 
 import labels
-
-class Number():
-
-    def __init__(self, value):
-        self.value = value
-        self.is_prime = pp.isprime(self.value)
-        if self.value == 1:
-            self.ideal_factor = 0
-            self.prime_factors = []
-            self.mean_deviation = 0
-            self.anti_slope = 0
-        else:
-            self.prime_factors = []
-            if self.is_prime:
-                self.prime_factors.append(self.value)
-            else:
-                self.prime_factors = pp.factors(self.value)
-            self.ideal_factor = self.get_ideal_factor(
-                self.value, self.prime_factors)
-            self.mean_deviation = self.get_mean_deviation(
-                self.prime_factors, self.ideal_factor)
-            if self.mean_deviation > 0:
-                self.anti_slope = self.value / self.mean_deviation
-            else:
-                self.anti_slope = 0
-
-    def __str__(self):
-        str = f'value: {self.value} :: '
-        str = str + \
-            f':: factors: [{self.prime_factors[:-1]}] {self.prime_factors[-1]}'
-        str = str + f' > ideal factor: {self.ideal_factor}'
-        str = str + f' > mean deviation: {self.mean_deviation}'
-        str = str + f' > antislope: {self.anti_slope}'
-        return str
-
-    def __repr__(self):
-        repr = f'{self.value} ({self.prime_factors[:-1]} {self.prime_factors[-1]})'
-        return repr
-
-    def get_ideal_factor(self, value: int, prime_factors: List[int]) -> float:
-        return math.pow(value, 1/len(prime_factors))
-
-    def get_mean_deviation(self, prime_factors: List[int], ideal_factor: float) -> float:
-        deviations_sum = 0
-        for prime_factor in prime_factors:
-            deviations_sum += abs(prime_factor - ideal_factor)
-        mean_deviation = deviations_sum / len(prime_factors)
-
-        return mean_deviation
 
 
 class ToolBox():
@@ -71,6 +23,25 @@ class ToolBox():
 
     def set_logger(self, logger):
         self.logger = logger
+
+    def get_color_base(self, number_of_groups):
+        if number_of_groups <= 11:
+            return 1
+        previous_base = int(np.floor(number_of_groups**(1/11)))
+        return previous_base + 1
+
+    def get_family_buckets(self, families, color_base):
+        color_buckets = {}
+        power = 0
+        while len(families) >= 1:
+            next_cut_off = color_base**power
+            bucket_index = power + 1
+            if not bucket_index in color_buckets.keys():
+                color_buckets[bucket_index] = []
+            color_buckets[bucket_index].extend(families[:next_cut_off])
+            families = families[next_cut_off:]
+            power = power + 1
+        return color_buckets
 
     def prep_folder(self, folder_name: str, reset_folder: bool):
         '''
@@ -88,7 +59,6 @@ class ToolBox():
                         os.remove(file_path)
             return
 
-
     def generate_number_list(self):
         self.logger.info('Generating numbers')
         number_list = []
@@ -104,7 +74,6 @@ class ToolBox():
 
         return number_list
 
-
     def generate_continuous_number_list(self):
         '''
         Generate a number of Number objects with values in a range, specified in config
@@ -114,10 +83,9 @@ class ToolBox():
         if lowerbound < 2:
             lowerbound = 2
         number_list = []
-        for value in range(lowerbound, upperbound + 1):
-            if pp.isprime(value) and not self.opt.set_include_primes:
+        for number in range(lowerbound, upperbound + 1):
+            if pp.isprime(number) and not self.opt.set_include_primes:
                 continue
-            number = Number(value)
             number_list.append(number)
         return number_list
 
@@ -132,25 +100,32 @@ class ToolBox():
             if self.opt.set_identity_factor_mode == 'count':
                 if self.opt.set_identity_factor_minimum_mode == 'family':
                     largest_family_factor = family[-1]
-                    identity_prime_generator = pp.primes_above(largest_family_factor)
+                    identity_prime_generator = pp.primes_above(
+                        largest_family_factor)
                     first_identity_factor = next(identity_prime_generator)
                 elif self.opt.set_identity_factor_minimum_mode == 'origin':
                     first_identity_factor = 2
-                    identity_prime_generator = pp.primes_above(first_identity_factor)
+                    identity_prime_generator = pp.primes_above(
+                        first_identity_factor)
                 else:
                     first_identity_factor = self.opt.set_identity_factor_minimum_value
-                    identity_prime_generator = pp.primes_above(first_identity_factor)
+                    identity_prime_generator = pp.primes_above(
+                        first_identity_factor)
+                    if not pp.isprime(first_identity_factor):
+                        first_identity_factor = next(identity_prime_generator)
                 number_of_families = self.opt.set_identity_factor_count
             else:
                 first_identity_factor = self.opt.set_identity_factor_range_min
-                number_of_families = pp.prime_count(self.opt.set_identity_factor_range_max) - pp.prime_count(self.opt.set_identity_factor_range_min)
-                identity_prime_generator = pp.primes_above(first_identity_factor)
+                number_of_families = pp.prime_count(
+                    self.opt.set_identity_factor_range_max) - pp.prime_count(self.opt.set_identity_factor_range_min)
+                identity_prime_generator = pp.primes_above(
+                    first_identity_factor)
 
-            number_list.append(Number(family_product * first_identity_factor))
-            for count in range(number_of_families):
+            number_list.append(family_product * first_identity_factor)
+            for count in range(number_of_families - 1):
                 next_identity_factor = next(identity_prime_generator)
-                number_list.append(Number(family_product * next_identity_factor))
-            
+                number_list.append(family_product * next_identity_factor)
+
         return number_list
 
     def read_data_from_file(self):
@@ -161,10 +136,34 @@ class ToolBox():
         except Exception as e:
             self.logger.error(f'Could not read csv input file: {e}')
             raise e
-        pass
         return df
 
-    def create_dataframe(self, number_list: List[Number]):
+    def get_bucket_index(self, family):
+        for index, buckets in self.color_buckets.items():
+            if family in buckets:
+                return str(index)
+
+    def create_dataframe(self, number_list: List[int]):
+
+        def get_ideal_factor(number: int, factors) -> float:
+            return math.pow(number, 1/len(factors))
+
+        def get_mean_deviation(prime_factors: List[int], ideal_factor: float) -> float:
+            deviations_sum = 0
+            for prime_factor in prime_factors:
+                deviations_sum += abs(prime_factor - ideal_factor)
+            mean_deviation = deviations_sum / len(prime_factors)
+            return mean_deviation
+
+        def get_antisplope(number, mean_deviation):
+            if mean_deviation > 0:
+                return number / mean_deviation
+            else:
+                return 0
+
+        def get_antislope_attractor(factors):
+            return int(np.prod(factors[:-1])) * len(factors)
+
         # prep dictionary
         data_dict = {}
         data_dict['number'] = []
@@ -177,26 +176,56 @@ class ToolBox():
         data_dict['family_factors'] = []
         data_dict['identity_factor'] = []
         data_dict['family_product'] = []
+        data_dict['family'] = []
+        data_dict['attractor'] = []
+        if self.opt.graph_use_color_buckets:
+            data_dict['color_bucket'] = []
 
+        self.attractors = []
         # fill in dictionary
         for number in number_list:
-            data_dict['number'].append(number.value)
+            data_dict['number'].append(number)
             if self.opt.set_include_primes:
                 data_dict['is_prime'].append(
-                    'true' if number.is_prime else 'false')
+                    'true' if pp.isprime(number) else 'false')
+            factors = pp.factors(number)
             data_dict['prime_factors'].append(
-                self.int_list_to_str(number.prime_factors))
-            data_dict['ideal'].append(number.ideal_factor)
-            data_dict['deviation'].append(number.mean_deviation)
-            data_dict['anti_slope'].append(number.anti_slope)
-            if number.value == 1:
+                self.int_list_to_str(factors))
+            ideal_factor = get_ideal_factor(number, factors)
+            data_dict['ideal'].append(ideal_factor)
+            mean_deviation = get_mean_deviation(factors, ideal_factor)
+            data_dict['deviation'].append(mean_deviation)
+            anti_slope = get_antisplope(number, mean_deviation)
+            data_dict['anti_slope'].append(anti_slope)
+            anti_slope_attractor = get_antislope_attractor(factors)
+            data_dict['attractor'].append(anti_slope_attractor)
+            if number == 1:
                 data_dict['family_factors'].append(0)
                 data_dict['identity_factor'].append(0)
-                data_dict['factor_family'].append(1)
+                data_dict['family_product'].append(1)
+                data_dict['family'].append(1)
+                self.attractors.append(1)
             else:
-                data_dict['family_factors'].append(number.prime_factors[:-1])
-                data_dict['identity_factor'].append(number.prime_factors[-1])
-                data_dict['family_product'].append(int(np.prod(number.prime_factors[:-1])))
+                data_dict['family_factors'].append(factors[:-1])
+                data_dict['identity_factor'].append(factors[-1])
+                data_dict['family_product'].append(int(np.prod(factors[:-1])))
+                data_dict['family'].append(int(np.prod(factors[:-1])))
+                self.attractors.append((int(np.prod(factors[:-1]))*len(factors)))
+
+        # prep colorization
+        if self.opt.graph_use_color_buckets:
+            self.attractors = np.array(self.attractors)
+            self.attractors = np.unique(self.attractors)
+            self.attractors = self.attractors.tolist()
+            # find color base
+            color_base = self.get_color_base(len(self.attractors))
+            self.color_buckets = self.get_family_buckets(self.attractors, color_base)
+            for number in number_list:
+                family = 1
+                if number > 1:
+                    family = (int(np.prod(pp.factors(number)[:-1])))*len(pp.factors(number))
+                color_bucket_index = self.get_bucket_index(family)
+                data_dict['color_bucket'].append(color_bucket_index)
 
         df = pd.DataFrame(data_dict)
         df.reset_index()
@@ -204,9 +233,8 @@ class ToolBox():
 
         return df
 
-
-    def plot_data(self, df):
-        data = ColumnDataSource(data=df)
+    def plot_data(self, dataframe):
+        data = ColumnDataSource(data=dataframe)
 
         # [x] create plot
         plot_width = self.opt.graph_width
@@ -229,9 +257,11 @@ class ToolBox():
                         ('ideal factor value', '@ideal'),
                         ('mean factor deviation', '@deviation'),
                         ('anti-slope', '@anti_slope'),
+                        ('attractor', '@attractor'),
                         ('family factors', '@family_factors'),
                         ('identity factor', '@identity_factor'),
                         ('family product', '@family_product'),
+                        ('family', '@family'),
                          ])
 
         hover = models.HoverTool(tooltips=tooltips)
@@ -240,12 +270,11 @@ class ToolBox():
         # [x] add graph
         graph_point_size = int(self.opt.graph_point_size)
 
-        graph_params['type'] = 'scatter'
+        # graph_params['type'] = 'scatter' # DBG Always use scatter
         graph_params['y_value'] = labels.y_axis_values[self.opt.graph_mode]
         graph_params['graph_point_size'] = graph_point_size
-        graph_params['palette'] = self.opt.graph_palette
 
-        graph, coloring = self.create_graph(graph, data, graph_params)
+        graph = self.create_graph(graph, data, graph_params)
 
         # [x] 'hard copy'
         graph_mode_chunk = labels.graph_mode_filename_chunk[self.opt.graph_mode]
@@ -255,19 +284,19 @@ class ToolBox():
         # hard_copy_filename = str(self.cfg.lowerbound) + '_' + str(self.cfg.upperbound) + \
         #     '_' + graph_mode_chunk + '_' + primes_included + '_' + coloring + '_' + timestamp
         hard_copy_filename = 'PLACEHOLDER_NAME'
-        csv_output_folder = 'output'
+        output_folder = 'output'
         if self.opt.run_create_csv:
             full_hard_copy_filename = hard_copy_filename + '.csv'
-            path = csv_output_folder + '\\'
-            self.prep_folder(csv_output_folder, self.opt.run_reset_output_data)
-            df.to_csv(path + full_hard_copy_filename)
+            path = output_folder + '\\'
+            self.prep_folder(output_folder, self.opt.run_reset_output_data)
+            dataframe.to_csv(path + full_hard_copy_filename)
             self.logger.info(f'Data saved as output\{full_hard_copy_filename}')
 
         # [x] show
         self.logger.info('Graph generated')
         show(graph)
 
-        self.stash_graph_html(csv_output_folder, hard_copy_filename)
+        self.stash_graph_html(output_folder, hard_copy_filename)
 
     def generate_timestamp(self):
         '''
@@ -294,17 +323,21 @@ class ToolBox():
         Creates a scatter plot by given parameters
         '''
 
-        coloring = ''
         y_value = graph_params['y_value']
         graph_point_size = graph_params['graph_point_size']
-        palette = graph_params['palette']
 
-        base_color = '#3030ff'
-        graph.scatter(source=data, x='number', y=y_value, color=base_color, size=graph_point_size)
-        coloring = 'monocolor'
 
-        return graph, coloring
+        if self.opt.graph_use_color_buckets:
+            color_factors_list = list(map(str, list(self.color_buckets.keys())))
+            palette_colors = Turbo[len(color_factors_list)]
+            color_mapper = CategoricalColorMapper(factors=color_factors_list, palette=palette_colors)
+            graph.scatter(source=data, x='number', y=y_value, color={'field': 'color_bucket', 'transform': color_mapper}, size=graph_point_size)
+        else:
+            base_color = '#3030ff'
+            graph.scatter(source=data, x='number', y=y_value,
+                          color=base_color, size=graph_point_size)
 
+        return graph
 
     def get_primes_between(self, previous: int, total_count: int):
         primes = []
@@ -338,15 +371,17 @@ class ToolBox():
 
         return figure(title=title, x_axis_label='number', y_axis_label=y_axis_label, width=width, height=height)
 
+
 class Options(object):
     def __init__(self):
         pass
 
     def __setattr__(self, key, value):
         self.__dict__[key] = value
-    
+
     def set(self, key, value):
         self.__dict__[key] = value
+
 
 class SettingsParser():
     def __init__(self, config_file='config.ini') -> None:
@@ -376,7 +411,6 @@ class SettingsParser():
         self.graph_point_size = None
         self.graph_mode = None
         self.graph_use_color_buckets = None
-        self.graph_palette = None
         self.run_create_csv = None
         self.run_hard_copy_timestamp_granularity = None
         self.run_reset_output_data = None
