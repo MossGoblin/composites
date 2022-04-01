@@ -232,16 +232,38 @@ class ToolBox():
             if family in buckets:
                 return str(index)
 
+    def create_graph_title(self):
+        primes_included_text = " Primes included" if self.opt.set_include_primes else " Primes excluded"
+        base_text = labels.graph_title[self.opt.graph_mode]
+        if self.opt.set_mode == 'family':
+            mode_text = f'{len(self.opt.set_families)} families'
+            if self.opt.set_identity_factor_mode == 'count':
+                if self.opt.set_identity_factor_minimum_mode == 'family':
+                    if_min_text = 'from family max'
+                elif self.opt.set_identity_factor_minimum_mode == 'value':
+                    if_min_text = f'from {self.opt.set_identity_factor_minimum_value}'
+                else:
+                    if_min_text = 'from 2'
+                if_text = f'{self.opt.set_identity_factor_count} identity factors ' + if_min_text
+            else:
+                if_text = f'identity factors {self.opt.set_identity_factor_range_min}..{self.opt.set_identity_factor_range_max}'
+            title = base_text + ' :: ' + mode_text + ' / ' + if_text + ' / ' + primes_included_text
+            
+        elif self.opt.set_mode == 'range':
+            title = base_text + ' :: ' + f'range {self.opt.set_range_min}..{self.opt.set_range_max}' + ' / ' + primes_included_text
+
+        return title
+
+
     def plot_data(self, dataframe):
         data = ColumnDataSource(data=dataframe)
 
         # [x] create plot
         plot_width = self.opt.graph_width
         plot_height = self.opt.graph_height
-        primes_included_text = " Primes included" if self.opt.set_include_primes else " Primes excluded"
 
         graph_params = {}
-        graph_params['title'] = 'LOREM IPSUM'
+        graph_params['title'] = self.create_graph_title()
         graph_params['y_axis_label'] = labels.y_axis_label[self.opt.graph_mode]
         graph_params['width'] = plot_width
         graph_params['height'] = plot_height
@@ -269,20 +291,14 @@ class ToolBox():
         # [x] add graph
         graph_point_size = int(self.opt.graph_point_size)
 
-        # graph_params['type'] = 'scatter' # DBG Always use scatter
         graph_params['y_value'] = labels.y_axis_values[self.opt.graph_mode]
         graph_params['graph_point_size'] = graph_point_size
 
         graph = self.create_graph(graph, data, graph_params)
 
         # [x] 'hard copy'
-        graph_mode_chunk = labels.graph_mode_filename_chunk[self.opt.graph_mode]
-        timestamp_format = self.generate_timestamp()
-        timestamp = datetime.utcnow().strftime(timestamp_format)
-        primes_included = 'primes' if self.opt.set_include_primes else 'no_primes'
-        # hard_copy_filename = str(self.cfg.lowerbound) + '_' + str(self.cfg.upperbound) + \
-        #     '_' + graph_mode_chunk + '_' + primes_included + '_' + coloring + '_' + timestamp
-        hard_copy_filename = 'PLACEHOLDER_NAME'
+        # hard_copy_filename = 'PLACEHOLDER_NAME'
+        hard_copy_filename = self.create_hard_copy_filename()
         output_folder = 'output'
         if self.opt.run_create_csv:
             full_hard_copy_filename = hard_copy_filename + '.csv'
@@ -296,6 +312,33 @@ class ToolBox():
         show(graph)
 
         self.stash_graph_html(output_folder, hard_copy_filename)
+
+    def create_hard_copy_filename(self):
+        graph_mode_chunk = labels.graph_mode_filename_chunk[self.opt.graph_mode]
+        timestamp_format = self.generate_timestamp()
+        timestamp = datetime.utcnow().strftime(timestamp_format)
+        primes_included = 'primes' if self.opt.set_include_primes else 'no_primes'
+        # MODE_DETAILS_TIMESTAMP
+        if self.opt.set_mode == 'family':
+            if self.opt.set_identity_factor_mode == 'count':
+                families_size = f'count {self.opt.set_identity_factor_count}'
+                if self.opt.set_identity_factor_minimum_mode == 'family':
+                    lower_bound = 'family_max'
+                elif self.opt.set_identity_factor_minimum_mode == 'value':
+                    lower_bound = 'value ({self.opt.set_identity_factor_minimum_mode})'
+                else:
+                    lower_bound = 'origin (2)'
+                families_size = self.opt.set_identity_factor_count
+                mode_text = f'F({len(self.opt.set_families)})_L({lower_bound})_S({families_size})'
+            else:
+                families_range = f'{self.opt.set_identity_factor_range_min}_{self.opt.set_identity_factor_range_max}'
+                mode_text = f'F_({len(self.opt.set_families)})_' + families_range
+        elif self.opt.set_mode == 'range':
+            mode_text = f'R_{self.opt.set_range_min}_{self.opt.set_range_min}'
+        
+        hard_copy_filename = mode_text + '_' + graph_mode_chunk + '_' + timestamp + '_' + primes_included
+
+        return hard_copy_filename
 
     def generate_timestamp(self):
         '''
@@ -415,6 +458,8 @@ class SettingsParser():
         self.run_reset_output_data = None
         # DBG END
         self._read_settings(self.config_file)
+        if len(self.set_families) == 1:
+            self.graph_use_color_buckets = False
 
     def _set(self, key, value):
         self.__dict__[key] = value
