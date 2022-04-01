@@ -247,7 +247,7 @@ class ToolBox():
                 if_text = f'{self.opt.set_identity_factor_count} identity factors ' + if_min_text
             else:
                 if_text = f'identity factors {self.opt.set_identity_factor_range_min}..{self.opt.set_identity_factor_range_max}'
-            title = base_text + ' :: ' + mode_text + ' / ' + if_text + ' / ' + primes_included_text
+            title = base_text + ' :: ' + mode_text + ' / ' + if_text
             
         elif self.opt.set_mode == 'range':
             title = base_text + ' :: ' + f'range {self.opt.set_range_min}..{self.opt.set_range_max}' + ' / ' + primes_included_text
@@ -321,22 +321,21 @@ class ToolBox():
         # MODE_DETAILS_TIMESTAMP
         if self.opt.set_mode == 'family':
             if self.opt.set_identity_factor_mode == 'count':
-                families_size = f'count {self.opt.set_identity_factor_count}'
                 if self.opt.set_identity_factor_minimum_mode == 'family':
-                    lower_bound = 'family_max'
+                    lower_bound = 'fmax'
                 elif self.opt.set_identity_factor_minimum_mode == 'value':
-                    lower_bound = 'value ({self.opt.set_identity_factor_minimum_mode})'
+                    lower_bound = 'val_{self.opt.set_identity_factor_minimum_mode}'
                 else:
-                    lower_bound = 'origin (2)'
+                    lower_bound = 'orig'
                 families_size = self.opt.set_identity_factor_count
-                mode_text = f'F({len(self.opt.set_families)})_L({lower_bound})_S({families_size})'
+                mode_text = f'F{len(self.opt.set_families)}_L{lower_bound}_S{families_size}'
             else:
                 families_range = f'{self.opt.set_identity_factor_range_min}_{self.opt.set_identity_factor_range_max}'
-                mode_text = f'F_({len(self.opt.set_families)})_' + families_range
+                mode_text = f'F{len(self.opt.set_families)}_' + families_range
         elif self.opt.set_mode == 'range':
-            mode_text = f'R_{self.opt.set_range_min}_{self.opt.set_range_min}'
+            mode_text = f'R_{self.opt.set_range_min}_{self.opt.set_range_min}_' + primes_included
         
-        hard_copy_filename = mode_text + '_' + graph_mode_chunk + '_' + timestamp + '_' + primes_included
+        hard_copy_filename = mode_text + '_' + graph_mode_chunk + '_' + timestamp
 
         return hard_copy_filename
 
